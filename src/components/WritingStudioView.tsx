@@ -34,6 +34,7 @@ import { getGenreGuidance, generateRuleBasedFeedback } from '../utils/writingCoa
 import { VersionHistoryModal } from './VersionHistoryModal';
 import { api } from '../utils/api';
 import { dataService } from '../services/dataService';
+import { writingService } from '../services/writingService';
 import confetti from 'canvas-confetti';
 
 interface WritingStudioViewProps {
@@ -85,6 +86,22 @@ export const WritingStudioView: React.FC<WritingStudioViewProps> = ({
   const [diamondNotes, setDiamondNotes] = useState<DbDiamondNote[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // 3 Writing Levels: Câu, Đoạn, Bài văn
+  const [writingLevel, setWritingLevel] = useState<'sentence' | 'paragraph' | 'essay'>('essay');
+  const [attemptId, setAttemptId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const genre = (currentLesson?.genre || '').toLowerCase();
+    const prompt = (currentLesson?.writingPrompt || '').toLowerCase();
+    if (genre.includes('câu') || prompt.includes('viết câu')) {
+      setWritingLevel('sentence');
+    } else if (genre.includes('đoạn') || prompt.includes('viết đoạn')) {
+      setWritingLevel('paragraph');
+    } else {
+      setWritingLevel('essay');
+    }
+  }, [currentLesson?.id, currentLesson?.genre]);
+
   // Auto-save & Status
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved' | 'offline'>('saved');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -105,27 +122,28 @@ export const WritingStudioView: React.FC<WritingStudioViewProps> = ({
   // Multi-device Cloud Sync: Load local cache immediately, then fetch from Cloud/Server
   const loadStudioState = async (forceToast: boolean = false) => {
     let hasLocal = false;
+    let localParsed: any = null;
     try {
       const saved = localStorage.getItem(storageKey);
       if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.currentStep) setCurrentStep(parsed.currentStep);
-        if (parsed.step1Answers) setStep1Answers(parsed.step1Answers);
-        if (parsed.step3Answers) setStep3Answers(parsed.step3Answers);
-        if (parsed.outline) setOutline(parsed.outline);
-        if (parsed.draftContent !== undefined) setDraftContent(parsed.draftContent);
-        if (parsed.revisedContent !== undefined) setRevisedContent(parsed.revisedContent);
-        if (parsed.selfAssessment) setSelfAssessment(parsed.selfAssessment);
-        if (parsed.versions) setVersions(parsed.versions);
-        if (parsed.isFromSubmission || parsed.submissionStatus) {
+        localParsed = JSON.parse(saved);
+        if (localParsed.currentStep) setCurrentStep(localParsed.currentStep);
+        if (localParsed.step1Answers) setStep1Answers(localParsed.step1Answers);
+        if (localParsed.step3Answers) setStep3Answers(localParsed.step3Answers);
+        if (localParsed.outline) setOutline(localParsed.outline);
+        if (localParsed.draftContent !== undefined) setDraftContent(localParsed.draftContent);
+        if (localParsed.revisedContent !== undefined) setRevisedContent(localParsed.revisedContent);
+        if (localParsed.selfAssessment) setSelfAssessment(localParsed.selfAssessment);
+        if (localParsed.versions) setVersions(localParsed.versions);
+        if (localParsed.isFromSubmission || localParsed.submissionStatus) {
           setCloudSubmissionInfo({
             isSubmitted: true,
-            status: parsed.submissionStatus,
-            score: parsed.score,
-            teacherComment: parsed.teacherComment,
+            status: localParsed.submissionStatus,
+            score: localParsed.score,
+            teacherComment: localParsed.teacherComment,
           });
         }
-        hasLocal = !!(parsed.draftContent || parsed.revisedContent || (parsed.outline && parsed.outline.body && parsed.outline.body !== guidance.step4OutlineTemplate.bodyDefault));
+        hasLocal = !!(localParsed.draftContent || localParsed.revisedContent || (localParsed.outline && localParsed.outline.body && localParsed.outline.body !== guidance.step4OutlineTemplate.bodyDefault));
       } else {
         setOutline({
           intro: guidance.step4OutlineTemplate.introDefault,
@@ -145,9 +163,24 @@ export const WritingStudioView: React.FC<WritingStudioViewProps> = ({
       if (res && res.draft) {
         const d = res.draft;
         const hasCloudContent = !!(d.draftContent || d.revisedContent || d.isFromSubmission);
-        
-        // Populate if no local content, or cloud has submission, or cloud was updated
-        if (!hasLocal || d.isFromSubmission || hasCloudContent) {
+        const localActiveText = (localParsed?.revisedContent || localParsed?.draftContent || '').trim();
+        const cloudActiveText = (d.revisedContent || d.draftContent || '').trim();
+
+        // Safe conflict handling: Do not overwrite newer local draft with older cloud data
+        if (hasLocal && hasCloudContent && localActiveText && cloudActiveText && localActiveText !== cloudActiveText) {
+          // Both have content and they differ: keep local draft safe and archive cloud version into history
+          const remoteVersion: WritingVersion = {
+            id: `cloud-${Date.now()}`,
+            versionName: 'Bản lưu từ thiết bị khác / đám mây',
+            step: d.currentStep || 3,
+            content: cloudActiveText,
+            wordCount: cloudActiveText ? cloudActiveText.split(/\s+/).filter(Boolean).length : 0,
+            timestamp: d.lastSavedAt || new Date().toLocaleTimeString('vi-VN'),
+          };
+          setVersions((prev) => [...prev.filter(v => v.content !== cloudActiveText), remoteVersion]);
+          showToast('🔄 Đã phát hiện bản ghi từ thiết bị khác: Bản nháp trên máy được bảo lưu, bản đám mây được lưu vào lịch sử phiên bản để không mất dữ liệu.');
+        } else if (!hasLocal || d.isFromSubmission || (!localActiveText && cloudActiveText)) {
+          // Local is empty or cloud has formal submission: adopt cloud data
           if (d.currentStep) setCurrentStep(d.currentStep);
           if (d.step1Answers) setStep1Answers(d.step1Answers);
           if (d.step3Answers) setStep3Answers(d.step3Answers);
@@ -178,6 +211,8 @@ export const WritingStudioView: React.FC<WritingStudioViewProps> = ({
           } else if (forceToast) {
             showToast('✅ Đã đồng bộ dữ liệu mới nhất từ máy chủ!');
           }
+        } else if (forceToast) {
+          showToast('✅ Dữ liệu trên thiết bị đã là mới nhất.');
         }
       } else if (forceToast) {
         showToast('✅ Dữ liệu trên thiết bị đã là mới nhất.');
@@ -256,13 +291,52 @@ export const WritingStudioView: React.FC<WritingStudioViewProps> = ({
       localStorage.setItem(storageKey, JSON.stringify(stateToSave));
     } catch {}
 
-    // Save to Cloud Server & Google Sheets (Multi-device persistence)
+    // Check offline state: never show fake success when disconnected
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setSaveStatus('offline');
+      showToast('⚠️ Mất kết nối mạng: Bản nháp đã lưu tạm an toàn trên máy. Hệ thống không tạo thông báo thành công giả và sẽ tự động đồng bộ khi có mạng.');
+      return;
+    }
+
+    // Save to Cloud Server & Supabase Database
     try {
       const lessonKey = currentLesson?.id || 'default';
       await api.saveStudioDraft(lessonKey, stateToSave);
 
-      // Async sync draft to database library
+      // Async sync to Database: student_writing_attempts & revisions
       if (activeContent.trim()) {
+        writingService.createAttempt({
+          studentId: currentUser.id,
+          classId: currentUser.classId || currentUser.className || 'Lớp 4A8',
+          lessonId: currentLesson?.id,
+          promptTitle: currentLesson?.lessonTitle || 'Bài làm văn lớp 4',
+          writingLevel,
+          originalContent: draftContent || activeContent, // Tuyệt đối không ghi đè bài viết gốc
+          currentContent: activeContent,
+          currentStep,
+          wordCount,
+          status: cloudSubmissionInfo.isSubmitted ? 'submitted' : 'draft',
+          rubricResults: selfAssessment ? [selfAssessment] : [],
+          stepData: { step1Answers, outline, selfAssessment },
+        }).then((att) => {
+          if (att?.id) {
+            setAttemptId(att.id);
+            // Record revision if requested or during step 5
+            if (createVersion || currentStep === 5) {
+              writingService.createRevision({
+                attemptId: att.id,
+                revisionNumber: updatedVersions.length,
+                stepNumber: currentStep,
+                stepName: versionName || (currentStep === 5 ? 'Bản tự sửa (Bước 5)' : `Bản lưu Bước ${currentStep}`),
+                content: activeContent,
+                wordCount,
+                changesSummary: currentStep === 5 ? 'Tự sửa theo góp ý sư phạm của Cô giáo AI' : undefined,
+                authorId: currentUser.id,
+              }).catch(() => {});
+            }
+          }
+        }).catch(() => {});
+
         dataService.createPost({
           title: currentLesson?.lessonTitle || 'Bài làm văn lớp 4',
           content: activeContent,
@@ -276,11 +350,11 @@ export const WritingStudioView: React.FC<WritingStudioViewProps> = ({
       showToast(createVersion ? '✅ Đã lưu phiên bản mới lên máy chủ!' : '💾 Đã lưu bài an toàn lên đám mây (đăng nhập máy nào cũng còn)!');
     } catch {
       setSaveStatus('offline');
-      showToast('⚠️ Đã lưu tạm trên máy, đang kết nối máy chủ để đồng bộ...');
+      showToast('⚠️ Không thể kết nối máy chủ: Đã lưu tạm an toàn trên máy, sẽ tự động đồng bộ lại sau.');
     }
   };
 
-  // Auto-save in background every 15s to Cloud Server
+  // Safe Auto-save in background every 15s to Cloud Server
   useEffect(() => {
     if (!draftContent && !revisedContent) return;
     const timer = setTimeout(() => {
@@ -299,10 +373,28 @@ export const WritingStudioView: React.FC<WritingStudioViewProps> = ({
       try {
         localStorage.setItem(storageKey, JSON.stringify(stateToSave));
       } catch {}
-      api.saveStudioDraft(lessonKey, stateToSave).catch(() => {});
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        setSaveStatus('offline');
+        return;
+      }
+      api.saveStudioDraft(lessonKey, stateToSave).then(() => {
+        setSaveStatus('saved');
+      }).catch(() => {
+        setSaveStatus('offline');
+      });
     }, 15000);
     return () => clearTimeout(timer);
   }, [draftContent, revisedContent, outline, currentStep]);
+
+  // Listener for reconnecting back online: safely verify and sync without overwriting
+  useEffect(() => {
+    const handleReconnected = () => {
+      showToast('🌐 Đã khôi phục kết nối mạng. Đang kiểm tra và đồng bộ an toàn dữ liệu...');
+      handleSaveDraft(false);
+    };
+    window.addEventListener('online', handleReconnected);
+    return () => window.removeEventListener('online', handleReconnected);
+  }, [draftContent, revisedContent, currentStep, versions, outline]);
 
   // Navigation between steps
   const handleNextStep = () => {
@@ -431,6 +523,28 @@ export const WritingStudioView: React.FC<WritingStudioViewProps> = ({
       if (res.quota?.remaining !== undefined) {
         setAiRemainingQuota(res.quota.remaining);
       }
+
+      // Persist AI feedback & evidence snippet to database
+      if (res.response && attemptId) {
+        const firstSentence = draftContent.split(/[.!?]/)[0]?.trim() || draftContent.slice(0, 80);
+        writingService.saveAiFeedback({
+          attemptId,
+          stepNumber: 4,
+          feedbackType: 'overall_review',
+          overallFeedback: res.response,
+          strengths: ['Diễn đạt tự nhiên, giàu cảm xúc tuổi học trò'],
+          suggestions: ['Chú ý dấu câu và ngắt đoạn rõ ràng hơn'],
+          evidenceSnippets: [
+            {
+              snippet: firstSentence,
+              type: 'praise',
+              explanation: 'Dẫn chứng câu văn học sinh tự viết làm căn cứ nhận xét sư phạm',
+            },
+          ],
+          starsAwarded: 5,
+        }).catch(() => {});
+      }
+
       showToast('🌟 Cô giáo AI đã đọc và gửi góp ý chi tiết cho bài của em!');
     } catch (err: any) {
       showToast('Không thể kết nối AI, hệ thống chuyển sang chế độ quy tắc sư phạm ngoại tuyến.');
@@ -489,6 +603,11 @@ export const WritingStudioView: React.FC<WritingStudioViewProps> = ({
               <RefreshCw className="w-3.5 h-3.5 animate-spin" />
               <span>Đang lưu lên máy chủ...</span>
             </span>
+          ) : saveStatus === 'offline' ? (
+            <span className="flex items-center gap-1.5 text-amber-700 bg-amber-50 px-2.5 py-1 rounded-xl border border-amber-200 font-semibold animate-pulse">
+              <CloudOff className="w-3.5 h-3.5 text-amber-600" />
+              <span>Ngoại tuyến: Bản nháp lưu an toàn trên máy</span>
+            </span>
           ) : saveStatus === 'saved' ? (
             <span className="flex items-center gap-1.5 text-emerald-700 font-semibold">
               <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3]" />
@@ -537,6 +656,38 @@ export const WritingStudioView: React.FC<WritingStudioViewProps> = ({
               <span className="text-xs text-amber-100">Trang {currentLesson.page} SGK</span>
             )}
           </div>
+
+          {/* 3 Cấp độ viết: Câu, Đoạn, Bài văn */}
+          <div className="flex items-center gap-1.5 pt-1 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setWritingLevel('sentence')}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                writingLevel === 'sentence' ? 'bg-white text-orange-900 shadow-xs' : 'bg-white/20 text-white hover:bg-white/30'
+              }`}
+            >
+              ✍️ Luyện viết câu (10–25 từ)
+            </button>
+            <button
+              type="button"
+              onClick={() => setWritingLevel('paragraph')}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                writingLevel === 'paragraph' ? 'bg-white text-orange-900 shadow-xs' : 'bg-white/20 text-white hover:bg-white/30'
+              }`}
+            >
+              📝 Luyện viết đoạn (80–150 từ)
+            </button>
+            <button
+              type="button"
+              onClick={() => setWritingLevel('essay')}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                writingLevel === 'essay' ? 'bg-white text-orange-900 shadow-xs' : 'bg-white/20 text-white hover:bg-white/30'
+              }`}
+            >
+              📚 Luyện viết bài văn (180–350 từ)
+            </button>
+          </div>
+
           <h2 className="font-heading text-xl sm:text-2xl font-bold">
             {currentLesson?.lessonTitle || 'Bài luyện viết Tiếng Việt 4'}
           </h2>

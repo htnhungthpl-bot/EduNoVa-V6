@@ -21,6 +21,7 @@ import {
 } from './data/grade4CurriculumData';
 import { SAMPLE_USERS } from './data/mockData';
 import { api, getStoredUser } from './utils/api';
+import { resourceService } from './services/resourceService';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>('lessons');
@@ -31,6 +32,28 @@ export default function App() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
   const [curriculumData, setCurriculumData] = useState<Grade4LessonItem[]>(getInitialCurriculumData);
   const [selectedLesson, setSelectedLesson] = useState<Grade4LessonItem | null>(null);
+  const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== 'undefined' ? navigator.onLine : true);
+
+  // Network connectivity status listener
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Load Curriculum Lessons from Database
+  useEffect(() => {
+    resourceService.getCurriculumLessons().then((lessons) => {
+      if (lessons && lessons.length > 0) {
+        setCurriculumData(lessons);
+      }
+    }).catch(() => {});
+  }, []);
 
   // Sync session on mount
   useEffect(() => {
@@ -131,6 +154,21 @@ export default function App() {
 
         {/* Main Content Area */}
         <main className="grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 pb-12">
+          {/* Offline status notification */}
+          {!isOnline && (
+            <div className="mb-6 p-3.5 bg-amber-500/15 border border-amber-500/30 rounded-2xl flex items-center justify-between gap-3 text-xs text-amber-900 font-medium animate-in fade-in">
+              <div className="flex items-center gap-2.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping shrink-0" />
+                <span>
+                  <strong>Đang ngoại tuyến:</strong> Thiết bị mất kết nối mạng. Bản nháp bài viết và thao tác của bạn đang được lưu tạm thời an toàn trên máy.
+                </span>
+              </div>
+              <span className="text-[11px] text-amber-800 bg-amber-100/90 px-2.5 py-1 rounded-xl border border-amber-200 shrink-0 font-semibold">
+                Sẽ tự động đồng bộ khi có mạng
+              </span>
+            </div>
+          )}
+
           {activeTab === 'home' && (
             <HomeView
               onNavigate={(tab) => {

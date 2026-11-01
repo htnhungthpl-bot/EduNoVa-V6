@@ -18,17 +18,19 @@ import {
   Upload, 
   Activity, 
   Clock, 
-  UserCheck
+  UserCheck,
+  Database
 } from 'lucide-react';
 import { UserProfile, DbSchool, DbClass, DbAuditLog } from '../types';
 import { api } from '../utils/api';
+import { DatabaseConnectionStatus } from './admin/DatabaseConnectionStatus';
 
 interface AdminManagementViewProps {
   currentUser: UserProfile;
 }
 
 export const AdminManagementView: React.FC<AdminManagementViewProps> = ({ currentUser }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'schools' | 'students' | 'logs' | 'cleanup'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'schools' | 'students' | 'logs' | 'database' | 'cleanup'>('users');
   
   // Data lists
   const [users, setUsers] = useState<any[]>([]);
@@ -432,6 +434,18 @@ export const AdminManagementView: React.FC<AdminManagementViewProps> = ({ curren
         >
           <Activity className="w-4 h-4" />
           <span>Nhật ký Hệ thống ({auditLogs.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('database')}
+          className={`px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
+            activeTab === 'database'
+              ? 'bg-amber-500 text-white shadow-xs'
+              : 'bg-white hover:bg-amber-50 text-slate-600 border border-slate-200'
+          }`}
+        >
+          <Database className="w-4 h-4" />
+          <span>Cơ sở dữ liệu Supabase</span>
         </button>
 
         <button
@@ -860,7 +874,12 @@ export const AdminManagementView: React.FC<AdminManagementViewProps> = ({ curren
         </div>
       )}
 
-      {/* TAB 5: CLEAN DEMO DATA */}
+      {/* TAB 5: SUPABASE DATABASE STATUS & DIAGNOSTICS */}
+      {activeTab === 'database' && (
+        <DatabaseConnectionStatus />
+      )}
+
+      {/* TAB 6: CLEAN DEMO DATA */}
       {activeTab === 'cleanup' && (
         <div className="bg-white p-6 rounded-3xl border border-rose-200 shadow-xs space-y-6">
           <div className="space-y-1">
@@ -868,7 +887,7 @@ export const AdminManagementView: React.FC<AdminManagementViewProps> = ({ curren
               Dọn dẹp & Chuẩn bị Môi trường Triển khai
             </h3>
             <p className="text-xs text-slate-500">
-              Loại bỏ các dữ liệu mẫu, trường học và lớp học thử nghiệm, bài nộp giả lập trước khi bàn giao cho học sinh và giáo viên thật.
+              Loại bỏ các dữ liệu thử nghiệm, đồng bộ cơ sở dữ liệu và chuẩn hóa dữ liệu tài khoản hệ thống.
             </p>
           </div>
 
@@ -1148,7 +1167,7 @@ export const AdminManagementView: React.FC<AdminManagementViewProps> = ({ curren
                   Xác nhận Dọn dẹp Dữ liệu Thử nghiệm
                 </h4>
                 <p className="text-xs text-slate-500">
-                  Làm sạch hệ thống để sẵn sàng bàn giao cho giáo viên và học sinh thật.
+                  Chuẩn hóa cơ sở dữ liệu và hệ thống người dùng chính thức.
                 </p>
               </div>
             </div>

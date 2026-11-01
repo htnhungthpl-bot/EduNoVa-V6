@@ -13,6 +13,7 @@ import {
 } from '../data/challengeData';
 import confetti from 'canvas-confetti';
 import { api, getStoredToken } from './api';
+import { gameService } from '../services/gameService';
 
 const STORAGE_PREFIX = 'edunova_challenges_v1_';
 
@@ -165,6 +166,20 @@ export function recordRoundOutcome(params: SubmitRoundParams): SubmitRoundResult
 
   // Persist locally
   saveLocalChallengeProgress(current);
+
+  // Persist game attempt to Supabase database (Anti-farming protection: only if !isDuplicate or points improved)
+  if (!isDuplicate && pointsAwarded > 0) {
+    gameService.recordGameAttempt({
+      studentId: userId,
+      gameId,
+      score: potentialScore,
+      maxScore: 10,
+      stars: usedHint ? 2 : 3,
+      completedLevel: 'Cơ bản',
+      badgesEarned: newBadges.map(b => b.id),
+      metadata: { roundId, usedHint, pointsAwarded }
+    }).catch(() => {});
+  }
 
   // Trigger celebration confetti
   if (pointsAwarded > 0 || newBadges.length > 0) {

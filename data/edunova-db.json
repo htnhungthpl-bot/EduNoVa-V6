@@ -14,7 +14,7 @@
       "avatar": "🛡️",
       "createdAt": "2026-10-21T16:18:11.759Z",
       "updatedAt": "2026-10-22T07:34:25.067Z",
-      "lastLoginAt": "2026-10-27T15:11:57.086Z"
+      "lastLoginAt": "2026-11-01T03:48:06.230Z"
     },
     {
       "id": "teacher-1792655672625-x1rw",
@@ -575,6 +575,22 @@
       "avatar": "👧",
       "createdAt": "2026-10-23T07:35:57.743Z",
       "updatedAt": "2026-10-23T07:35:57.743Z"
+    },
+    {
+      "id": "student-1793504708465-z0px",
+      "fullName": "Nguyễn Mai Anh",
+      "username": "hs_1793504708465_k6u",
+      "role": "student",
+      "className": "Lớp 4A8",
+      "schoolName": "Trường Tiểu học Kim Liên A",
+      "studentCode": "HSLP4A8-37",
+      "pinCode": "1234",
+      "status": "active",
+      "avatar": "🎒",
+      "createdAt": "2026-11-01T03:45:08.465Z",
+      "updatedAt": "2026-11-01T03:47:17.769Z",
+      "lastLoginAt": "2026-11-01T03:48:18.384Z",
+      "classId": "class-4a8"
     }
   ],
   "schools": [],
@@ -608,6 +624,30 @@
   ],
   "assignments": [
     {
+      "id": "assign-1793504886264",
+      "title": "Kể lại một câu chuyện em đã đọc hoặc đã nghe",
+      "prompt": "Hãy kể lại câu chuyện Người ăn xin mà em đã học",
+      "genre": "Văn kể chuyện",
+      "targetWordCount": {
+        "min": 140,
+        "max": 220
+      },
+      "classId": "class-4a8",
+      "className": "Lớp 4A8",
+      "teacherId": "user-admin-01",
+      "teacherName": "Quản trị viên Hệ thống (Admin)",
+      "dueDate": "2026-11-08T03:48:06.264Z",
+      "allowAi": true,
+      "rubricLevels": [
+        "Cần hỗ trợ",
+        "Đang hình thành",
+        "Đạt yêu cầu",
+        "Vận dụng tốt"
+      ],
+      "status": "published",
+      "createdAt": "2026-11-01T03:48:06.264Z"
+    },
+    {
       "id": "assign-4a8-story-01",
       "title": "Kể lại một câu chuyện em đã đọc hoặc đã nghe",
       "prompt": "Em hãy viết một bài văn kể lại một câu chuyện (truyện cổ tích, truyện ngụ ngôn hoặc gương người tốt việc tốt) mà em đã được đọc hoặc nghe kể, nêu rõ bài học ý nghĩa từ câu chuyện đó.",
@@ -633,6 +673,25 @@
     }
   ],
   "submissions": [
+    {
+      "id": "sub-1793504898419-h92q",
+      "assignmentId": "assign-1793504886264",
+      "lessonId": "lesson-01",
+      "lessonTitle": "Bài làm văn lớp 4",
+      "studentId": "student-1793504708465-z0px",
+      "studentName": "Nguyễn Mai Anh",
+      "studentCode": "HSLP4A8-37",
+      "studentClass": "Lớp 4A8",
+      "studentAvatar": "🎒",
+      "schoolId": "school-kimlien-a",
+      "submittedAt": "03:48, 1/11/2026",
+      "status": "pending",
+      "wordCount": 33,
+      "content": "Hôm ấy, trên đường đi học về, em gặp một ông lão ăn xin già yếu, đôi mắt đỏ hoe, bàn tay gầy guộc run rẩy chìa ra xin một chút tình thương.",
+      "versionCount": 1,
+      "isPublishedToStudent": false,
+      "resubmittedCount": 0
+    },
     {
       "id": "sub-4a8-story-36",
       "assignmentId": "assign-4a8-story-01",
@@ -1695,6 +1754,96 @@
   "diamondNotes": [],
   "auditLogs": [
     {
+      "id": "log-1793504898423-kejfm",
+      "userId": "student-1793504708465-z0px",
+      "username": "Nguyễn Mai Anh",
+      "action": "SUBMIT_ESSAY",
+      "details": "Nộp bài: Bài làm văn lớp 4 (33 từ) - Lớp 4A8",
+      "ip": "127.0.0.1",
+      "timestamp": "2026-11-01T03:48:18.423Z"
+    },
+    {
+      "id": "log-1793504898387-ag5qu",
+      "userId": "student-1793504708465-z0px",
+      "username": "Nguyễn Mai Anh",
+      "action": "STUDENT_LOGIN",
+      "details": "Học sinh đăng nhập vào Lớp 4A8",
+      "ip": "127.0.0.1",
+      "timestamp": "2026-11-01T03:48:18.387Z"
+    },
+    {
+      "id": "log-1793504886268-nn041",
+      "userId": "user-admin-01",
+      "username": "admin",
+      "action": "CREATE_ASSIGNMENT",
+      "details": "Giao bài tập: Kể lại một câu chuyện em đã đọc hoặc đã nghe",
+      "ip": "127.0.0.1",
+      "timestamp": "2026-11-01T03:48:06.268Z"
+    },
+    {
+      "id": "log-1793504886235-voo1y",
+      "userId": "user-admin-01",
+      "username": "admin",
+      "action": "LOGIN_SUCCESS",
+      "details": "Đăng nhập thành công với vai trò admin",
+      "ip": "127.0.0.1",
+      "timestamp": "2026-11-01T03:48:06.235Z"
+    },
+    {
+      "id": "log-1793504869859-73ksu",
+      "userId": "user-admin-01",
+      "username": "admin",
+      "action": "LOGIN_SUCCESS",
+      "details": "Đăng nhập thành công với vai trò admin",
+      "ip": "127.0.0.1",
+      "timestamp": "2026-11-01T03:47:49.859Z"
+    },
+    {
+      "id": "log-1793504837772-txg13",
+      "userId": "student-1793504708465-z0px",
+      "username": "hs_1793504708465_k6u",
+      "action": "UPDATE_USER",
+      "details": "Cập nhật thông tin tài khoản: Nguyễn Mai Anh",
+      "ip": "127.0.0.1",
+      "timestamp": "2026-11-01T03:47:17.772Z"
+    },
+    {
+      "id": "log-1793504837723-qt8oa",
+      "userId": "student-1793504708465-z0px",
+      "username": "Nguyễn Mai Anh",
+      "action": "STUDENT_LOGIN",
+      "details": "Học sinh đăng nhập vào Lớp 4A8",
+      "ip": "127.0.0.1",
+      "timestamp": "2026-11-01T03:47:17.723Z"
+    },
+    {
+      "id": "log-1793504822699-nn9y0",
+      "userId": "user-admin-01",
+      "username": "admin",
+      "action": "LOGIN_SUCCESS",
+      "details": "Đăng nhập thành công với vai trò admin",
+      "ip": "127.0.0.1",
+      "timestamp": "2026-11-01T03:47:02.699Z"
+    },
+    {
+      "id": "log-1793504752598-g89dg",
+      "userId": "user-admin-01",
+      "username": "admin",
+      "action": "LOGIN_SUCCESS",
+      "details": "Đăng nhập thành công với vai trò admin",
+      "ip": "127.0.0.1",
+      "timestamp": "2026-11-01T03:45:52.598Z"
+    },
+    {
+      "id": "log-1793504708468-xpp3e",
+      "userId": "student-1793504708465-z0px",
+      "username": "Nguyễn Mai Anh",
+      "action": "STUDENT_JOIN",
+      "details": "Học sinh mới tham gia lớp Lớp 4A8",
+      "ip": "127.0.0.1",
+      "timestamp": "2026-11-01T03:45:08.468Z"
+    },
+    {
       "id": "log-1793374149684-9dr59",
       "userId": "teacher-1792655672625-x1rw",
       "username": "htnhung_thpl",
@@ -2152,9 +2301,38 @@
       ],
       "lastUpdated": "2026-10-27T15:03:41.005Z",
       "syncedAt": "2026-10-27T15:03:43.160Z"
+    },
+    "test-student-4a8": {
+      "userId": "test-student-4a8",
+      "totalPoints": 150,
+      "games": {
+        "sentence-builder": {
+          "completedRoundIds": [
+            "sb-1",
+            "sb-2"
+          ],
+          "score": 60
+        }
+      },
+      "syncedAt": "2026-11-01T03:47:40.254Z"
     }
   },
   "posts": [
+    {
+      "id": "post-sub-sub-1793504898419-h92q",
+      "studentId": "student-1793504708465-z0px",
+      "authorName": "Nguyễn Mai Anh",
+      "schoolId": "school-kimlien-a",
+      "classId": "class-4a8",
+      "className": "Lớp 4A8",
+      "title": "Bài làm văn lớp 4",
+      "content": "Hôm ấy, trên đường đi học về, em gặp một ông lão ăn xin già yếu, đôi mắt đỏ hoe, bàn tay gầy guộc run rẩy chìa ra xin một chút tình thương.",
+      "category": "Văn miêu tả",
+      "status": "SUBMITTED",
+      "visibility": "CLASS",
+      "createdAt": "2026-11-01T03:48:18.419Z",
+      "updatedAt": "2026-11-01T03:48:18.419Z"
+    },
     {
       "id": "post-4a8-story-36",
       "studentId": "student-1792740957743-bxrs",
@@ -3872,6 +4050,69 @@
       "createdAt": "2026-10-27T15:32:17.748Z"
     }
   ],
-  "studioDrafts": {},
+  "studioDrafts": {
+    "student-1793504708465-z0px_lesson-01": {
+      "currentStep": 6,
+      "draftContent": "Hôm ấy, trên đường đi học về, em gặp một ông lão ăn xin già yếu, đôi mắt đỏ hoe, bàn tay gầy guộc run rẩy chìa ra xin một chút tình thương.",
+      "revisedContent": "Hôm ấy, trên đường đi học về, em gặp một ông lão ăn xin già yếu, đôi mắt đỏ hoe, bàn tay gầy guộc run rẩy chìa ra xin một chút tình thương.",
+      "step1Answers": {},
+      "step3Answers": {},
+      "outline": {
+        "intro": "Phần Mở bài đã hoàn thiện trong bài nộp.",
+        "body": "Phần Thân bài đã hoàn thiện trong bài nộp.",
+        "conclusion": "Phần Kết bài đã hoàn thiện trong bài nộp."
+      },
+      "selfAssessment": {
+        "stars": 5,
+        "checkedCriteria": {},
+        "favoriteSentence": "",
+        "learningTakeaway": ""
+      },
+      "versions": [
+        {
+          "id": "ver-1793504898419",
+          "versionName": "Bản nộp chính thức",
+          "step": 6,
+          "content": "Hôm ấy, trên đường đi học về, em gặp một ông lão ăn xin già yếu, đôi mắt đỏ hoe, bàn tay gầy guộc run rẩy chìa ra xin một chút tình thương.",
+          "wordCount": 33,
+          "timestamp": "03:48, 1/11/2026"
+        }
+      ],
+      "lastSavedAt": "03:48, 1/11/2026",
+      "isFromSubmission": true,
+      "submissionStatus": "pending"
+    },
+    "nguyễn mai anh_lesson-01": {
+      "currentStep": 6,
+      "draftContent": "Hôm ấy, trên đường đi học về, em gặp một ông lão ăn xin già yếu, đôi mắt đỏ hoe, bàn tay gầy guộc run rẩy chìa ra xin một chút tình thương.",
+      "revisedContent": "Hôm ấy, trên đường đi học về, em gặp một ông lão ăn xin già yếu, đôi mắt đỏ hoe, bàn tay gầy guộc run rẩy chìa ra xin một chút tình thương.",
+      "step1Answers": {},
+      "step3Answers": {},
+      "outline": {
+        "intro": "Phần Mở bài đã hoàn thiện trong bài nộp.",
+        "body": "Phần Thân bài đã hoàn thiện trong bài nộp.",
+        "conclusion": "Phần Kết bài đã hoàn thiện trong bài nộp."
+      },
+      "selfAssessment": {
+        "stars": 5,
+        "checkedCriteria": {},
+        "favoriteSentence": "",
+        "learningTakeaway": ""
+      },
+      "versions": [
+        {
+          "id": "ver-1793504898419",
+          "versionName": "Bản nộp chính thức",
+          "step": 6,
+          "content": "Hôm ấy, trên đường đi học về, em gặp một ông lão ăn xin già yếu, đôi mắt đỏ hoe, bàn tay gầy guộc run rẩy chìa ra xin một chút tình thương.",
+          "wordCount": 33,
+          "timestamp": "03:48, 1/11/2026"
+        }
+      ],
+      "lastSavedAt": "03:48, 1/11/2026",
+      "isFromSubmission": true,
+      "submissionStatus": "pending"
+    }
+  },
   "achievements": {}
 }

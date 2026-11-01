@@ -7,6 +7,7 @@ import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
 import { googleSheetsService } from './src/server/googleSheetsService.ts';
+import { getSupabaseAdmin, isSupabaseBackendConfigured, getMaskedBackendUrl } from './src/server/supabaseAdmin.ts';
 
 dotenv.config();
 
@@ -1943,85 +1944,7 @@ Nhiệm vụ: Tổng hợp 3 lỗi sai phổ biến nhất học sinh hay mắc 
     res.json({ success: true, message: `Đã xóa thành công tài khoản "${user.fullName}"` });
   });
 
-  // GET /api/reports/class-summary (Teacher & Admin)
-  app.get('/api/reports/class-summary', authMiddleware, requireRole(['teacher', 'admin', 'school']), (req: AuthRequest, res: Response) => {
-    const user = req.user!;
-    const targetClass = (req.query.className as string) || user.className || '';
-    if (!targetClass) {
-      return res.json({
-        className: '',
-        maxCapacity: 0,
-        registeredStudentsCount: 0,
-        submittedStudentsCount: 0,
-        totalSubmissions: 0,
-        gradedSubmissionsCount: 0,
-        pendingSubmissionsCount: 0,
-        needsEditCount: 0,
-        averageScore: 0,
-        submissionRate: 0,
-      });
-    }
 
-    let classStudents: DbUser[] = [];
-    if (user.role === 'teacher' && user.id !== 'teacher-1792655672625-x1rw') {
-      classStudents = db.users.filter(u => 
-        u.role === 'student' && 
-        u.teacherId === user.id &&
-        u.className && 
-        u.className.trim().toLowerCase() === targetClass.trim().toLowerCase()
-      );
-    } else {
-      classStudents = db.users.filter(u => 
-        u.role === 'student' && 
-        u.className && 
-        u.className.trim().toLowerCase() === targetClass.trim().toLowerCase()
-      );
-    }
-
-    if (classStudents.length === 0) {
-      return res.json({
-        className: targetClass,
-        maxCapacity: 35,
-        registeredStudentsCount: 0,
-        submittedStudentsCount: 0,
-        totalSubmissions: 0,
-        gradedSubmissionsCount: 0,
-        pendingSubmissionsCount: 0,
-        needsEditCount: 0,
-        averageScore: 0,
-        submissionRate: 0,
-      });
-    }
-
-    const totalStudents = classStudents.length;
-    const maxCapacity = 35;
-    const studentIds = new Set(classStudents.map(s => s.id));
-    const studentNames = new Set(classStudents.map(s => (s.fullName || '').trim().toLowerCase()));
-
-    const classSubs = db.submissions.filter(s => {
-      if (!s.studentClass || s.studentClass.trim().toLowerCase() !== targetClass.trim().toLowerCase()) return false;
-      return (s.studentId && studentIds.has(s.studentId)) || 
-             (s.studentName && studentNames.has((s.studentName || '').trim().toLowerCase()));
-    });
-    const submittedStudentIds = new Set(classSubs.map(s => s.studentId));
-    const gradedSubs = classSubs.filter(s => s.status === 'graded');
-
-    const totalScores = gradedSubs.reduce((acc, s) => acc + (s.score || 0), 0);
-    const averageScore = gradedSubs.length > 0 ? Number((totalScores / gradedSubs.length).toFixed(1)) : 0;
-
-    res.json({
-      className: targetClass,
-      maxCapacity,
-      registeredStudentsCount: totalStudents,
-      submittedStudentsCount: submittedStudentIds.size,
-      totalSubmissions: classSubs.length,
-      gradedSubmissionsCount: gradedSubs.length,
-      pendingSubmissionsCount: classSubs.filter(s => s.status === 'pending').length,
-      needsEditCount: classSubs.filter(s => s.status === 'needs_edit').length,
-      averageScore,
-      submissionRate: totalStudents > 0 ? Math.round((submittedStudentIds.size / totalStudents) * 100) : 0,
-    });
-  });
 
   // GET /api/schools
   app.get('/api/schools', (_req: Request, res: Response) => {
@@ -2760,6 +2683,104 @@ Nhiệm vụ: Tổng hợp 3 lỗi sai phổ biến nhất học sinh hay mắc 
     res.json({ success: true, message: 'Đã xóa bài viết thành công.' });
   });
 
+  // GET /api/reports/class-summary - Real database report queries (No mock data)
+  app.get('/api/reports/class-summary', authMiddleware, requireRole(['teacher', 'admin', 'school']), async (req: AuthRequest, res: Response) => {
+    const user = req.user!;
+    const targetClass = (req.query.className as string || user.className || 'Lớp 4A8').trim();
+
+    // 1. Fetch real students of target class from Database
+    const students = db.users.filter(u => u.role === 'student' && (!u.className || u.className === targetClass || u.className.toLowerCase().includes(targetClass.toLowerCase())));
+    const studentIds = new Set(students.map(s => s.id));
+    const studentNames = new Set(students.map(s => s.fullName.trim().toLowerCase()));
+
+    // 2. Fetch assignments created
+    const assignments = (db.assignments || []).filter(a => !a.className || a.className === targetClass || a.className.toLowerCase().includes(targetClass.toLowerCase()));
+
+    // 3. Fetch submissions
+    const submissions = (db.submissions || []).filter(s => 
+      (s.studentClass === targetClass || !s.studentClass || s.studentClass.toLowerCase().includes(targetClass.toLowerCase())) &&
+      ((s.studentId && studentIds.has(s.studentId)) || (s.studentName && studentNames.has(s.studentName.trim().toLowerCase())))
+    );
+
+    const submittedStudentsCount = new Set(submissions.map(s => s.studentId || s.studentName.toLowerCase())).size;
+    const inProgressCount = Math.max(0, students.length - submittedStudentsCount);
+    const gradedList = submissions.filter(s => s.status === 'graded' && typeof s.score === 'number');
+    const averageScore = gradedList.length > 0 
+      ? Math.round((gradedList.reduce((sum, s) => sum + (s.score || 0), 0) / gradedList.length) * 10) / 10
+      : 0;
+
+    // 4. Skills needing improvement (derived from rubric evaluations and revision requests)
+    const skillCounts: Record<string, number> = {
+      'Chính tả & Dấu câu': 0,
+      'Vốn từ gợi cảm & Biểu cảm': 0,
+      'Liên kết & Mở rộng câu': 0,
+      'Bố cục 3 phần rõ ràng': 0,
+      'Cảm xúc & Chi tiết chân thực': 0,
+    };
+
+    submissions.forEach(s => {
+      if (s.rubricScores) {
+        s.rubricScores.forEach(r => {
+          if (r.level === 'support_needed' || r.level === 'developing') {
+            if (r.criterionName.includes('Chính tả')) skillCounts['Chính tả & Dấu câu']++;
+            else if (r.criterionName.includes('từ') || r.criterionName.includes('ngữ')) skillCounts['Vốn từ gợi cảm & Biểu cảm']++;
+            else if (r.criterionName.includes('Câu')) skillCounts['Liên kết & Mở rộng câu']++;
+            else if (r.criterionName.includes('Bố cục')) skillCounts['Bố cục 3 phần rõ ràng']++;
+            else skillCounts['Cảm xúc & Chi tiết chân thực']++;
+          }
+        });
+      }
+      if (s.needsRevisionNotes) {
+        const text = s.needsRevisionNotes.toLowerCase();
+        if (text.includes('chính tả') || text.includes('dấu')) skillCounts['Chính tả & Dấu câu']++;
+        if (text.includes('từ') || text.includes('lặp')) skillCounts['Vốn từ gợi cảm & Biểu cảm']++;
+        if (text.includes('câu') || text.includes('lủng củng')) skillCounts['Liên kết & Mở rộng câu']++;
+      }
+    });
+
+    const skillsNeedingImprovement = Object.entries(skillCounts)
+      .filter(([_, count]) => count > 0)
+      .sort((a, b) => b[1] - a[1])
+      .map(([skill, count]) => ({ skill, studentCount: count }));
+
+    // 5. Revision stats
+    const totalRevisions = submissions.reduce((sum, s) => sum + (s.resubmittedCount || 0) + (s.versionCount ? s.versionCount - 1 : 0), 0);
+
+    // 6. Game practice results
+    let totalGamePoints = 0;
+    let totalRoundsCompleted = 0;
+    students.forEach(st => {
+      const prog = db.challenges?.[st.id];
+      if (prog) {
+        totalGamePoints += prog.totalPoints || 0;
+        if (prog.games) {
+          Object.values(prog.games).forEach((g: any) => {
+            totalRoundsCompleted += g.completedRoundIds?.length || 0;
+          });
+        }
+      }
+    });
+
+    res.json({
+      className: targetClass,
+      totalStudents: students.length,
+      assignedCount: assignments.length,
+      submittedCount: submissions.length,
+      submittedStudentsCount,
+      inProgressCount,
+      submissionRate: students.length > 0 ? Math.round((submittedStudentsCount / students.length) * 100) : 0,
+      averageScore,
+      gradedCount: gradedList.length,
+      totalRevisions,
+      skillsNeedingImprovement,
+      gameStats: {
+        totalGamePoints,
+        totalRoundsCompleted,
+        avgPointsPerStudent: students.length > 0 ? Math.round(totalGamePoints / students.length) : 0,
+      },
+    });
+  });
+
   // GET /api/dashboard/teacher - Comprehensive teacher overview
   app.get('/api/dashboard/teacher', authMiddleware, requireRole(['teacher', 'admin']), (req: AuthRequest, res: Response) => {
     const user = req.user!;
@@ -2809,6 +2830,95 @@ Nhiệm vụ: Tổng hợp 3 lỗi sai phổ biến nhất học sinh hay mắc 
       myPosts: myPosts.slice(0, 10),
       classmatePosts: classmatePosts.slice(0, 10),
     });
+  });
+
+  // Admin Database diagnostic endpoint (Only accessible by admin users)
+  app.get('/api/admin/supabase-status', authMiddleware, requireRole(['admin']), async (_req: AuthRequest, res: Response) => {
+    const isConfigured = isSupabaseBackendConfigured();
+    const maskedUrl = getMaskedBackendUrl();
+    const startTime = Date.now();
+
+    if (!isConfigured) {
+      return res.json({
+        isConfigured: false,
+        connected: false,
+        latencyMs: 0,
+        authStatus: 'unconfigured',
+        dbStatus: 'unconfigured',
+        maskedUrl,
+        message: 'Chưa cấu hình SUPABASE_URL hoặc API Key ở backend (Google AI Studio Secrets / .env)',
+        hasServiceRole: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    try {
+      const client = getSupabaseAdmin();
+      if (!client) {
+        throw new Error('Không thể khởi tạo Supabase Admin Client');
+      }
+
+      // Check auth service ping
+      let authStatus = 'ready';
+      try {
+        const { error: authErr } = await client.auth.getSession();
+        if (authErr) authStatus = 'error';
+      } catch {
+        authStatus = 'unreachable';
+      }
+
+      // Check Database query
+      let dbStatus = 'accessible';
+      let tableInfo: any = {};
+      const { data, error, count } = await client
+        .from('system_configs')
+        .select('key', { count: 'exact' })
+        .limit(1);
+
+      if (error) {
+        if (error.code === '42P01') {
+          dbStatus = 'table_missing';
+        } else if (error.code === '42501') {
+          dbStatus = 'permission_denied';
+        } else {
+          dbStatus = 'error';
+          tableInfo.error = error.message;
+        }
+      } else {
+        tableInfo.systemConfigsFound = count ?? data?.length;
+      }
+
+      const latencyMs = Date.now() - startTime;
+      const isConnected = authStatus === 'ready' && (dbStatus === 'accessible' || dbStatus === 'table_missing');
+
+      return res.json({
+        isConfigured: true,
+        connected: isConnected,
+        latencyMs,
+        authStatus,
+        dbStatus,
+        maskedUrl,
+        message: isConnected
+          ? `Máy chủ kết nối Supabase thành công (${latencyMs}ms)!`
+          : 'Lỗi truy cập cơ sở dữ liệu Supabase.',
+        hasServiceRole: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
+        tableInfo,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err: any) {
+      const latencyMs = Date.now() - startTime;
+      return res.json({
+        isConfigured: true,
+        connected: false,
+        latencyMs,
+        authStatus: 'error',
+        dbStatus: 'unreachable',
+        maskedUrl,
+        message: `Lỗi kết nối máy chủ Supabase: ${err.message}`,
+        hasServiceRole: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
+        timestamp: new Date().toISOString(),
+      });
+    }
   });
 
   // Health check endpoint for container supervisor and proxy probes

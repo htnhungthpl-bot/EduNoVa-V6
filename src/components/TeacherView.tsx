@@ -1216,31 +1216,127 @@ export const TeacherView: React.FC<TeacherViewProps> = ({ currentUser, onNavigat
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* 6 Real Database Report Metrics */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Metric 1: Số bài tập đã giao */}
             <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
-              <span className="text-xs font-bold text-slate-500 uppercase">Tỉ lệ học sinh đã nộp bài:</span>
+              <span className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5 text-indigo-500" />
+                Số bài tập đã giao:
+              </span>
+              <div className="font-heading text-2xl font-bold text-indigo-700">
+                {assignments.length} bài tập
+              </div>
+              <div className="text-xs text-slate-500">Giao cho {currentClassLabel}</div>
+            </div>
+
+            {/* Metric 2: Bài viết đã nộp */}
+            <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
+              <span className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-purple-500" />
+                Bài viết đã nộp:
+              </span>
               <div className="font-heading text-2xl font-bold text-purple-700">
-                {reportData?.submittedStudentsCount || 0} / {students.length} em
+                {submissions.length} bài
               </div>
               <div className="text-xs text-slate-500">
-                Đạt tỉ lệ {reportData?.submissionRate || 0}% sĩ số lớp
+                {reportData?.submittedStudentsCount || 0} / {students.length} em ({reportData?.submissionRate || 0}%)
               </div>
             </div>
 
+            {/* Metric 3: Bài viết đang thực hiện */}
             <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
-              <span className="text-xs font-bold text-slate-500 uppercase">Điểm trung bình lớp:</span>
-              <div className="font-heading text-2xl font-bold text-emerald-700">
-                {reportData?.averageScore || 0} / 10
+              <span className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-amber-500" />
+                Đang thực hiện bài:
+              </span>
+              <div className="font-heading text-2xl font-bold text-amber-700">
+                {reportData?.inProgressCount !== undefined ? reportData.inProgressCount : Math.max(0, students.length - (reportData?.submittedStudentsCount || 0))} em
               </div>
-              <div className="text-xs text-slate-500">Tính trên {gradedCount} bài đã hoàn thành chấm</div>
+              <div className="text-xs text-slate-500">Đang tự viết hoặc tự sửa nháp</div>
             </div>
 
+            {/* Metric 4: Lịch sử chỉnh sửa */}
             <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
-              <span className="text-xs font-bold text-slate-500 uppercase">Tổng số lượt bài nộp:</span>
-              <div className="font-heading text-2xl font-bold text-slate-800">
-                {submissions.length} lượt
+              <span className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1.5">
+                <RotateCcw className="w-3.5 h-3.5 text-blue-500" />
+                Lịch sử chỉnh sửa:
+              </span>
+              <div className="font-heading text-2xl font-bold text-blue-700">
+                {reportData?.totalRevisions || 0} lượt
               </div>
-              <div className="text-xs text-slate-500">Gồm cả các lần nộp lại chỉnh sửa</div>
+              <div className="text-xs text-slate-500">Nộp lại bản tự sửa hoàn thiện</div>
+            </div>
+          </div>
+
+          {/* Row 2: Skills Needing Improvement & Game Results */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Metric 5: Các kỹ năng học sinh cần luyện thêm */}
+            <div className="p-5 rounded-3xl bg-slate-50 border border-slate-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-heading font-bold text-slate-800 text-sm flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-purple-600" />
+                  <span>Kỹ năng học sinh cần luyện thêm (Phân tích từ Rubric & AI)</span>
+                </h4>
+                <span className="text-[10px] bg-purple-100 text-purple-800 font-bold px-2 py-0.5 rounded-full">
+                  Thực tế từ bài làm
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                {reportData?.skillsNeedingImprovement && reportData.skillsNeedingImprovement.length > 0 ? (
+                  reportData.skillsNeedingImprovement.map((item: any, idx: number) => (
+                    <div key={idx} className="p-2.5 rounded-xl bg-white border border-slate-200/80 flex items-center justify-between text-xs">
+                      <span className="font-medium text-slate-800">{item.skill}</span>
+                      <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 font-bold text-[11px]">
+                        {item.studentCount} em cần rèn
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-3 bg-white rounded-xl text-xs text-slate-500 text-center">
+                    Các em đã đạt yêu cầu cơ bản về kỹ năng chính tả và câu từ.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Metric 6: Kết quả trò chơi rèn luyện của lớp */}
+            <div className="p-5 rounded-3xl bg-slate-50 border border-slate-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-heading font-bold text-slate-800 text-sm flex items-center gap-2">
+                  <Award className="w-4 h-4 text-amber-500" />
+                  <span>Kết quả 4 Trò chơi Rèn luyện Ngôn ngữ</span>
+                </h4>
+                <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full">
+                  Dữ liệu tích lũy
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="p-3 bg-white rounded-xl border border-slate-200/80">
+                  <div className="font-heading text-lg font-bold text-amber-600">
+                    {reportData?.gameStats?.totalGamePoints || 0}
+                  </div>
+                  <div className="text-[10px] text-slate-500 uppercase font-semibold mt-0.5">Tổng điểm lớp</div>
+                </div>
+                <div className="p-3 bg-white rounded-xl border border-slate-200/80">
+                  <div className="font-heading text-lg font-bold text-emerald-600">
+                    {reportData?.gameStats?.totalRoundsCompleted || 0}
+                  </div>
+                  <div className="text-[10px] text-slate-500 uppercase font-semibold mt-0.5">Vòng hoàn thành</div>
+                </div>
+                <div className="p-3 bg-white rounded-xl border border-slate-200/80">
+                  <div className="font-heading text-lg font-bold text-indigo-600">
+                    {reportData?.gameStats?.avgPointsPerStudent || 0}
+                  </div>
+                  <div className="text-[10px] text-slate-500 uppercase font-semibold mt-0.5">Điểm TB/em</div>
+                </div>
+              </div>
+
+              <div className="text-[11px] text-slate-500 italic">
+                * Bao gồm các thử thách: Vua Ghép Câu, Thám Tử Chính Tả, Truy Tìm Từ Đắt và Thợ Rèn Câu Văn.
+              </div>
             </div>
           </div>
 
